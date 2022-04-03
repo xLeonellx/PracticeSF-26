@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 )
 
 var bufferClearInterval int
+
 const bufferSize int = 10
 
 type RingBuffer struct {
@@ -20,7 +22,7 @@ type RingBuffer struct {
 	m     sync.Mutex
 }
 
-func NewRingBuffer (size int) *RingBuffer {
+func NewRingBuffer(size int) *RingBuffer {
 	return &RingBuffer{make([]int, size), -1, size, sync.Mutex{}}
 }
 
@@ -28,10 +30,10 @@ func (r *RingBuffer) Push(elem int) {
 	r.m.Lock()
 	defer r.m.Unlock()
 	if r.pos == r.size-1 {
-		for i :=1; i<=r.size; i++ {
+		for i := 1; i <= r.size; i++ {
 			r.array[i-1] = r.array[i]
 		}
-	r.array[r.pos] = elem
+		r.array[r.pos] = elem
 	} else {
 		r.pos++
 		r.array[r.pos] = elem
@@ -53,27 +55,30 @@ type ConvInt func(<-chan bool, <-chan int) <-chan int
 
 type PipelineInt struct {
 	stages []ConvInt
-	done <- chan bool
+	done   <-chan bool
 }
 
-func NewPipelineInt(done <-chan bool, stages ...ConvInt) *PipelineInt  {
+func NewPipelineInt(done <-chan bool, stages ...ConvInt) *PipelineInt {
 	return &PipelineInt{done: done, stages: stages}
 }
 
-func (p *PipelineInt) Run(source <- chan int) <-chan int {
+func (p *PipelineInt) Run(source <-chan int) <-chan int {
 	var c <-chan int = source
-	for index := range p.stages{
+	for index := range p.stages {
 		c = p.runConvInt(p.stages[index], c)
 	}
 	return c
 }
 
-func (p *PipelineInt) runConvInt(stage ConvInt, sourceChan <- chan int) <- chan int {
+func (p *PipelineInt) runConvInt(stage ConvInt, sourceChan <-chan int) <-chan int {
 	return stage(p.done, sourceChan)
 
 }
 
 func main() {
+
+	l := log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile)
+
 	dataSource := func() (<-chan int, <-chan bool) {
 		c := make(chan int)
 		done := make(chan bool)
@@ -85,12 +90,12 @@ func main() {
 				scanner.Scan()
 				data = scanner.Text()
 				if strings.EqualFold(data, "exit") {
-					fmt.Println("Программа завершила работу! До свидания!")
+					l.Println("Программа завершила работу! До свидания!")
 					return
 				}
 				i, err := strconv.Atoi(data)
 				if err != nil {
-					fmt.Println("Какая досада! Программа обрабатывает только целые числа!")
+					l.Println("Какая досада! Программа обрабатывает только целые числа!")
 					continue
 				}
 				c <- i
@@ -158,7 +163,7 @@ func main() {
 		go func() {
 			for {
 				select {
-				case <-time.After(time.Duration(bufferClearInterval)*1000000000):
+				case <-time.After(time.Duration(bufferClearInterval) * 1000000000):
 					bufferData := buffer.Get()
 					if bufferData != nil {
 						for _, data := range bufferData {
@@ -181,17 +186,17 @@ func main() {
 		for {
 			select {
 			case data := <-c:
-				fmt.Printf("Обработаны данные: %d\n", data)
+				l.Printf("Обработаны данные: %d\n", data)
 			case <-done:
 				return
 			}
 		}
 	}
 
-	fmt.Println("Добро пожаловать в программу!")
-	fmt.Println("Пожалуйста введите интервал очистки! (в секундах)")
+	l.Println("Добро пожаловать в программу!")
+	l.Println("Пожалуйста введите интервал очистки! (в секундах)")
 	fmt.Scan(&bufferClearInterval)
-	fmt.Println("Пожалуйста введите ваши данные!")
+	l.Println("Пожалуйста введите ваши данные!")
 	source, done := dataSource()
 	pipeline := NewPipelineInt(done, negativeFilterConvInt, specialFilterConvInt, bufferConvInt)
 	consumer(done, pipeline.Run(source))
