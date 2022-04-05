@@ -33,7 +33,7 @@ func (r *RingBuffer) Push(el int) {
 		for i := 1; i <= r.size; i++ {
 			r.array[i-1] = r.array[i]
 		}
-		r.array[r.pos] = el
+		r.array[r.pos] = elem
 	} else {
 		r.pos++
 		r.array[r.pos] = el
@@ -63,7 +63,7 @@ func NewPipelineInt(done <-chan bool, stages ...ConvInt) *PipelineInt {
 }
 
 func (p *PipelineInt) Run(source <-chan int) <-chan int {
-	c := source
+	var c <-chan int = source
 	for index := range p.stages {
 		c = p.runConvInt(p.stages[index], c)
 	}
