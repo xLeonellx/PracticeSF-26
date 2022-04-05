@@ -72,7 +72,6 @@ func (p *PipelineInt) Run(source <-chan int) <-chan int {
 
 func (p *PipelineInt) runConvInt(stage ConvInt, sourceChan <-chan int) <-chan int {
 	return stage(p.done, sourceChan)
-
 }
 
 func main() {
