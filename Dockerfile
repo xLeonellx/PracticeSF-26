@@ -7,7 +7,7 @@ RUN go install .
  
 FROM alpine:latest
 LABEL version="1.0.0"
-LABEL maintainer="Test Student<test@test.ru>"
+LABEL maintainer="rusmetovkostya@yandex.ru"
 WORKDIR /root/
 COPY --from=compiling_stage /go/bin/pipeline .
 ENTRYPOINT ./pipeline
